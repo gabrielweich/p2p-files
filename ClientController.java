@@ -25,7 +25,7 @@ class MessageListener extends Thread {
                 String message = new String(packet.getData(), 0, packet.getLength());
                 System.out.println("Message from: " + packet.getAddress());
                 System.out.println(message + "\n");
-                if(message.startsWith("requestFile")) this.processFileRequest(packet, message);
+                if (message.startsWith("requestFile")) this.processFileRequest(packet, message);
                 if (message.startsWith("willSendFile")) this.processFileConfirmation(packet, message);
                 if (message.startsWith("readyToReceive")) this.processFileSend(packet, message);
                 if (message.startsWith("fileNotFound")) this.processFileNotFount(packet, message);
@@ -42,16 +42,16 @@ class MessageListener extends Thread {
         InetAddress requesterAddress = packet.getAddress();
         Integer requesterPort = packet.getPort();
 
-        if (this.myFiles.containsKey(filehash)){
+        if (this.myFiles.containsKey(filehash)) {
             File file = new File(this.myFiles.get(filehash));
             if (file.exists()) {
-                this.sendMessage(requesterAddress, requesterPort, "willSendFile;"+file.getName()+";"+filehash.toString());
-            }
-            else {
+                this.sendMessage(requesterAddress, requesterPort,
+                        "willSendFile;" + file.getName() + ";" + filehash.toString());
+            } else {
                 this.myFiles.remove(filehash);
                 this.sendMessage(requesterAddress, requesterPort, "fileNotFound");
             }
-        }else {
+        } else {
             this.sendMessage(requesterAddress, requesterPort, "fileNotFound");
         }
     }
@@ -69,14 +69,34 @@ class MessageListener extends Thread {
         this.sendMessage(receiveSocket, senderAddress, senderPort, returnMessage);
     }
 
-    private void processFileSend(DatagramPacket packet, String message) {
-        this.sendMessage(packet.getAddress(), packet.getPort(), "CHUUUUPA");
+    private void processFileSend(DatagramPacket packet, String message) throws IOException {
+        InputStream ios = null;
+        String[] tokens = message.split(";");
+        File file = new File(this.myFiles.get(tokens[1]));
+        if (!file.exists()) return;
+        InetAddress receiverAddress = packet.getAddress();
+        Integer receiverPort = packet.getPort();
+
+        try  {
+            ios = new FileInputStream(file);
+            int i = 0;
+
+            do {
+                byte[] buf = new byte[1024];
+                i = ios.read(buf);
+                DatagramPacket contentPacket = new DatagramPacket(buf, buf.length, receiverAddress, receiverPort);
+                this.socket.send(contentPacket);
+            } while (i != -1);
+
+            System.out.println("fim");
+        }finally {
+            if (ios != null) ios.close();
+        }
     }
 
     private void processFileNotFount(DatagramPacket packet, String message) {
         System.out.println("O arquivo não foi encontrado.");
     }
-
 
     public void sendMessage(InetAddress address, Integer port, String message) {
         this.sendMessage(this.socket, address, port, message);
@@ -92,9 +112,7 @@ class MessageListener extends Thread {
         }
     }
 
-
 }
-
 
 class FileReceiver extends Thread {
     DatagramSocket socket;
@@ -109,20 +127,27 @@ class FileReceiver extends Thread {
     }
 
     public void run() {
-        while (!Thread.currentThread().isInterrupted()) {
-            try {
-                byte[] texto = new byte[1024];
-                DatagramPacket packet = new DatagramPacket(texto, texto.length);
-                socket.setSoTimeout(1000);
-                socket.receive(packet);
-                String message = new String(packet.getData(), 0, packet.getLength());
-                System.out.println(message + "\n");
-            } catch (IOException e) {
-                break;
+        try {
+            FileOutputStream fos = new FileOutputStream(new File("files", this.filename));
+            byte[] receiveData = new byte[1024];
+            while (!Thread.currentThread().isInterrupted() && receiveData != null) {
+                try {
+                    DatagramPacket packet = new DatagramPacket(receiveData, receiveData.length);
+                    socket.setSoTimeout(1000);
+                    socket.receive(packet);
+                    fos.write(packet.getData());
+                } catch (IOException e) {
+                    break;
+                }
             }
-        }
-        System.out.println("Arquivo recebido! Encerrando transferência.");
-        this.socket.close();
+            fos.close();
+            System.out.println("Arquivo recebido! Encerrando transferência.");
+        } catch (IOException e1) {
+            System.out.println("Erro ao receber arquivo!");
+            e1.printStackTrace();
+        } finally {
+            this.socket.close();
+        }        
     }
 }
 
@@ -290,9 +315,9 @@ public class ClientController {
             else if (line.startsWith("request")) this.resquestFileFrom(line);
             else {
                 System.out.println("clients: ver os clientes registrados\n" +
-            "sendto: enviar mensagem\n"+
-            "addfile: registrar arquivo deste cliente no servidor\n"+
-            "search: procurar arquivos com esta substring no servidor\n\n");
+                "sendto: enviar mensagem\n"+
+                "addfile: registrar arquivo deste cliente no servidor\n"+
+                "search: procurar arquivos com esta substring no servidor\n\n");
             }
 		}
 
