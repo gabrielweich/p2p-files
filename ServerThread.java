@@ -8,11 +8,13 @@ class Command {
     InetAddress address;
     Integer port;
     String[] request;
+    String peerKey;
 
     public Command(InetAddress address, int port, String[] request) {
         this.address = address;
         this.port = port;
         this.request = request;
+        this.peerKey = Peer.getKey(address, port);
     }
 
     public String toString(){
@@ -41,6 +43,8 @@ public class ServerThread extends Thread {
         this.serverCommands.put("login", this::login);
         this.serverCommands.put("heartbeat", this::heartbeat);
         this.serverCommands.put("clients", this::getClients);
+        this.serverCommands.put("addfile", this::registerFile);
+        this.serverCommands.put("search", this::searchFiles);
     }
 
 
@@ -50,12 +54,26 @@ public class ServerThread extends Thread {
     }
 
     private void heartbeat(Command command) {
-        this.controller.registerHeartbeat(command.address, command.port);
+        this.controller.registerHeartbeat(command.peerKey);
     }
 
     private void getClients(Command command){
         String message = this.controller.getPeers().stream().map(Peer::toString).collect(Collectors.joining("\n\n"));
         this.sendMessage(command.address, command.port, message);
+    }
+
+    private void registerFile(Command command) {
+        byte[] filehash = command.request[1].getBytes();
+        String filename = command.request[2];
+
+        this.controller.registerFile(command.peerKey, filehash, filename);
+        String message = "Arquivo registrado com sucesso!";
+        this.sendMessage(command.address, command.port, message);
+    }
+
+    private void searchFiles(Command command) {
+        String result = this.controller.searchFiles(command.request[1]);
+        this.sendMessage(command.address, command.port, result);
     }
 
     private void shutdown() {
@@ -68,7 +86,7 @@ public class ServerThread extends Thread {
     private void processPacket(DatagramPacket packet) {
         InetAddress address = packet.getAddress();
         int port = packet.getPort();
-        String[] request = new String(packet.getData(), 0, packet.getLength()).split(" ");
+        String[] request = new String(packet.getData(), 0, packet.getLength()).split(";");
         Command command = new Command(address, port, request);
 
         System.out.println(command);
