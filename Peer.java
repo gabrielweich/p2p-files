@@ -9,7 +9,7 @@ public class Peer {
     Integer port;
     String name;
     LocalDateTime lastHeartbeat;
-    Map<byte[], String> peerFiles;
+    Map<String, String> peerFiles;
 
     public Peer(InetAddress address, Integer port, String name) {
         this.address = address;
@@ -24,13 +24,13 @@ public class Peer {
         return address.toString() + ":" + port.toString();
     }
 
-    public void registerFile(byte[] filehash, String filename){
+    public void registerFile(String filehash, String filename){
         this.peerFiles.put(filehash, filename);
     }
 
     public List<String> searchFiles(String name) {
         List<String> resultFiles = new ArrayList<>();
-        for (Map.Entry<byte[], String> file : this.peerFiles.entrySet()) {
+        for (Map.Entry<String, String> file : this.peerFiles.entrySet()) {
             if (file.getValue().toLowerCase().indexOf(name.toLowerCase()) != -1){
                 String filename = file.getValue();
                 String filehash = file.getKey().toString();
@@ -55,7 +55,7 @@ public class Peer {
     @Override
     public String toString() {
         String filesString="";
-        for (Map.Entry<byte[], String> file : this.peerFiles.entrySet()) {
+        for (Map.Entry<String, String> file : this.peerFiles.entrySet()) {
             filesString += "File: " + file.getValue() + "\n";
             filesString += "Hash: " + file.getKey() + "\n";
         }

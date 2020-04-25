@@ -3,12 +3,14 @@ import java.net.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 class MessageListener extends Thread {
     DatagramSocket socket;
-    Map<byte[], String> myFiles;
+    Map<String, String> myFiles;
+    Thread fileReceiverThread;
 
-    public MessageListener(DatagramSocket socket, Map<byte[], String> myFiles) {
+    public MessageListener(DatagramSocket socket, Map<String, String> myFiles) {
         this.socket = socket;
         this.myFiles = myFiles;
     }
@@ -17,25 +19,114 @@ class MessageListener extends Thread {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 byte[] texto = new byte[1024];
-                // recebe datagrama
                 DatagramPacket packet = new DatagramPacket(texto, texto.length);
                 socket.setSoTimeout(500);
                 socket.receive(packet);
                 String message = new String(packet.getData(), 0, packet.getLength());
-                System.out.println(packet.getAddress() + ": " + message + '\n');
-                // if(message.startsWith("requestFile")) {
-                //     this.requestedFile(message);
-                // }
+                System.out.println("Message from: " + packet.getAddress());
+                System.out.println(message + "\n");
+                if(message.startsWith("requestFile")) this.processFileRequest(packet, message);
+                if (message.startsWith("willSendFile")) this.processFileConfirmation(packet, message);
+                if (message.startsWith("readyToReceive")) this.processFileSend(packet, message);
+                if (message.startsWith("fileNotFound")) this.processFileNotFount(packet, message);
             } catch (IOException e) {
             }
         }
         System.out.println("Client finished.");
     }
 
-    private void requestedFile(String message) {
+    private void processFileRequest(DatagramPacket packet, String message) {
         String[] tokens = message.split(";");
+        String filehash = tokens[1];
+
+        InetAddress requesterAddress = packet.getAddress();
+        Integer requesterPort = packet.getPort();
+
+        if (this.myFiles.containsKey(filehash)){
+            File file = new File(this.myFiles.get(filehash));
+            if (file.exists()) {
+                this.sendMessage(requesterAddress, requesterPort, "willSendFile;"+file.getName()+";"+filehash.toString());
+            }
+            else {
+                this.myFiles.remove(filehash);
+                this.sendMessage(requesterAddress, requesterPort, "fileNotFound");
+            }
+        }else {
+            this.sendMessage(requesterAddress, requesterPort, "fileNotFound");
+        }
+    }
+
+    private void processFileConfirmation(DatagramPacket packet, String message) throws SocketException {
+        String[] tokens = message.split(";");
+        DatagramSocket receiveSocket = new DatagramSocket();
+        InetAddress senderAddress = packet.getAddress();
+        Integer senderPort = packet.getPort();
+        String filename = tokens[1];
+        String filehash = tokens[2];
+        this.fileReceiverThread = new FileReceiver(receiveSocket, senderAddress, senderPort, filename);
+        String returnMessage = "readyToReceive;" + filehash;
+        this.fileReceiverThread.start();
+        this.sendMessage(receiveSocket, senderAddress, senderPort, returnMessage);
+    }
+
+    private void processFileSend(DatagramPacket packet, String message) {
+        this.sendMessage(packet.getAddress(), packet.getPort(), "CHUUUUPA");
+    }
+
+    private void processFileNotFount(DatagramPacket packet, String message) {
+        System.out.println("O arquivo não foi encontrado.");
+    }
+
+
+    public void sendMessage(InetAddress address, Integer port, String message) {
+        this.sendMessage(this.socket, address, port, message);
+    }
+
+    public void sendMessage(DatagramSocket socket, InetAddress address, Integer port, String message) {
+        byte[] command = new byte[1024];
+        command = message.getBytes();
+        try {
+            socket.send(new DatagramPacket(command, command.length, address, port));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+}
+
+
+class FileReceiver extends Thread {
+    DatagramSocket socket;
+    InetAddress senderAddress;
+    Integer senderPort;
+    String filename;
+
+    public FileReceiver(DatagramSocket socket, InetAddress senderAddress, Integer senderPort, String filename) throws SocketException {
+        this.socket = socket;
+        this.senderPort = senderPort;
+        this.filename = filename;
+    }
+
+    public void run() {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                byte[] texto = new byte[1024];
+                DatagramPacket packet = new DatagramPacket(texto, texto.length);
+                socket.setSoTimeout(1000);
+                socket.receive(packet);
+                String message = new String(packet.getData(), 0, packet.getLength());
+                System.out.println(message + "\n");
+            } catch (IOException e) {
+                break;
+            }
+        }
+        System.out.println("Arquivo recebido! Encerrando transferência.");
+        this.socket.close();
     }
 }
+
+
 
 class HeartbeatSender extends Thread {
     DatagramSocket socket;
@@ -70,7 +161,7 @@ public class ClientController {
     String nickname;
     DatagramSocket socket;
 
-    Map<byte[], String> myFiles;
+    Map<String, String> myFiles;
 
 
     public ClientController(String serverAddress, String nickname) throws IOException {
@@ -78,7 +169,7 @@ public class ClientController {
         this.nickname = nickname;
         this.serverPort = 4500;
         this.socket = new DatagramSocket();
-        this.myFiles = new HashMap<>();
+        this.myFiles = new ConcurrentHashMap<>();
     }
 
 
@@ -121,25 +212,36 @@ public class ClientController {
 
     
 
-    private byte[] createFileHash(File file) throws NoSuchAlgorithmException, IOException {
-        byte[] buffer = new byte[8192];
-        int count;
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file));
-        while ((count = bis.read(buffer)) > 0) {
-            digest.update(buffer, 0, count);
-        }
-        bis.close();
+    private String createFileHash(File file) throws NoSuchAlgorithmException, IOException {
+        // Get file input stream for reading the file content
+        MessageDigest digest = MessageDigest.getInstance("SHA-1");
+        FileInputStream fis = new FileInputStream(file);
 
-        byte[] hash = digest.digest();
-        return hash;
+        // Create byte array to read data in chunks
+        byte[] byteArray = new byte[1024];
+        int bytesCount = 0;
+
+        while ((bytesCount = fis.read(byteArray)) != -1) {
+            digest.update(byteArray, 0, bytesCount);
+        }
+        ;
+
+        fis.close();
+
+        byte[] bytes = digest.digest();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < bytes.length; i++) {
+            sb.append(Integer.toString((bytes[i] & 0xff) + 0x100, 16).substring(1));
+        }
+
+        return sb.toString();
     }
 
     private void registerFileCommand(String line) {
         String[] tokens = line.split(" ");
         File file = new File(tokens[1]);
         try {
-            byte[] fileHash = this.createFileHash(file);
+            String fileHash = this.createFileHash(file);
             this.myFiles.put(fileHash, file.getAbsolutePath());
             String message = "addfile;" + fileHash.toString() + ";" + file.getName();
             this.sendMessage(this.serverAddress, this.serverPort, message);

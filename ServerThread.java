@@ -63,7 +63,7 @@ public class ServerThread extends Thread {
     }
 
     private void registerFile(Command command) {
-        byte[] filehash = command.request[1].getBytes();
+        String filehash = command.request[1];
         String filename = command.request[2];
 
         this.controller.registerFile(command.peerKey, filehash, filename);

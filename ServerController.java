@@ -47,7 +47,7 @@ public class ServerController {
             this.peers.get(peerKey).lastHeartbeat = LocalDateTime.now();
     }
 
-    public void registerFile(String peerKey, byte[] filehash, String filename) {
+    public void registerFile(String peerKey, String filehash, String filename) {
         if (this.peers.containsKey(peerKey))
             this.peers.get(peerKey).registerFile(filehash, filename);
     }
