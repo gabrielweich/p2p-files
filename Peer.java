@@ -1,13 +1,13 @@
 import java.net.InetAddress;
 import java.time.LocalDateTime;
 
-public class User {
+public class Peer {
     InetAddress address;
     Integer port;
     String name;
     LocalDateTime lastHeartbeat;
 
-    public User(InetAddress address, Integer port, String name) {
+    public Peer(InetAddress address, Integer port, String name) {
         this.address = address;
         this.port = port;
         this.name = name;
@@ -15,8 +15,8 @@ public class User {
     }
 
 
-    public String getClientKey() {
-        return this.address.toString() + ":" + this.port.toString() + "/" + this.name;
+    public static String getKey(InetAddress address, Integer port){
+        return address.toString() + ":" + port.toString();
     }
 
     @Override
@@ -24,11 +24,11 @@ public class User {
         if (o == this)
             return true;
 
-        if (!(o instanceof User))
+        if (!(o instanceof Peer))
             return false;
 
-        User c = (User) o;
-        return c.getClientKey().equals(this.getClientKey());
+        Peer c = (Peer) o;
+        return Peer.getKey(c.address, c.port).equals(Peer.getKey(this.address, this.port));
     }
 
     @Override

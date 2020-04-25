@@ -50,11 +50,11 @@ public class ServerThread extends Thread {
     }
 
     private void heartbeat(Command command) {
-        this.controller.registerHeartbeat(command.address, command.port, command.request[1]);
+        this.controller.registerHeartbeat(command.address, command.port);
     }
 
     private void getClients(Command command){
-        String message = this.controller.getUsers().stream().map(User::toString).collect(Collectors.joining("\n\n"));
+        String message = this.controller.getPeers().stream().map(Peer::toString).collect(Collectors.joining("\n\n"));
         this.sendMessage(command.address, command.port, message);
     }
 

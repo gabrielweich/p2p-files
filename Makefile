@@ -14,9 +14,11 @@ ServerController.class:     ServerController.java
 				@javac ServerController.java
 
 
-User.class:     User.java
-				@javac User.java
+Peer.class:     Peer.java
+				@javac Peer.java
 
+ClientController.class:     ClientController.java
+				@javac ClientController.java
 
 clean:
 				@rm -rf *.class *~

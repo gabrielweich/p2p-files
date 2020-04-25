@@ -7,37 +7,37 @@ import java.util.Map;
 
 public class ServerController {
 
-    Map<String, User> clients;
+    Map<String, Peer> peers;
 
     public ServerController() {
-        clients = new HashMap<>();
+        peers = new HashMap<>();
     }
 
     public boolean addClient(InetAddress address, Integer port, String name) {
-        User client = new User(address, port, name);
-        if (this.clients.containsKey(client.getClientKey())) {
+        Peer peer = new Peer(address, port, name);
+        String peerKey = Peer.getKey(address, port);
+
+        if (this.peers.containsKey(peerKey)) {
             return false;
         } else {
-            this.clients.put(client.getClientKey(), client);
+            this.peers.put(peerKey, peer);
             return true;
         }
     }
 
-    public void registerHeartbeat(InetAddress address, Integer port, String name) {
-        User user = new User(address, port, name);
-        if (this.clients.containsKey(user.getClientKey())) {
-            this.clients.get(user.getClientKey()).lastHeartbeat = LocalDateTime.now();
-        } else {
-            this.clients.put(user.getClientKey(), user);
-        }
+    public void registerHeartbeat(InetAddress address, Integer port) {
+        String peerKey = Peer.getKey(address, port);
+        if (this.peers.containsKey(peerKey))
+            this.peers.get(peerKey).lastHeartbeat = LocalDateTime.now();
+
     }
 
-    public Collection<User> getUsers() {
-        return this.clients.values();
+    public Collection<Peer> getPeers() {
+        return this.peers.values();
     }
 
     public void removeOldUsers() {
         int delay = 10;
-        this.clients.values().removeIf(u -> u.lastHeartbeat.isBefore(LocalDateTime.now().minusSeconds(delay)));
+        this.peers.values().removeIf(u -> u.lastHeartbeat.isBefore(LocalDateTime.now().minusSeconds(delay)));
     }
 }
