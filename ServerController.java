@@ -36,7 +36,7 @@ public class ServerController {
                 for (String file : peer.searchFiles(name)) {
                     result += "\n" + file + "\n";
                 }
-                result += "\n\n";
+                result += "\n";
             }
         }
         return result;

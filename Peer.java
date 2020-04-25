@@ -56,8 +56,8 @@ public class Peer {
     public String toString() {
         String filesString="";
         for (Map.Entry<byte[], String> file : this.peerFiles.entrySet()) {
-            filesString += "Hash: " + file.getValue() + "\n";
-            filesString += "File: " + file.getKey() + "\n";
+            filesString += "File: " + file.getValue() + "\n";
+            filesString += "Hash: " + file.getKey() + "\n";
         }
 
         return "address: " + address.getHostAddress() + ":" + port +

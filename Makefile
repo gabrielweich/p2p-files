@@ -1,4 +1,4 @@
-all:				Server.class Client.class ServerThread.class ServerController.class User.class
+all:				Server.class Client.class ServerThread.class ServerController.class Peer.class ClientController.class
 
 Server.class:		Server.java
 				@javac Server.java

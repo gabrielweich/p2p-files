@@ -6,9 +6,11 @@ import java.util.*;
 
 class MessageListener extends Thread {
     DatagramSocket socket;
+    Map<byte[], String> myFiles;
 
-    public MessageListener(DatagramSocket socket) {
+    public MessageListener(DatagramSocket socket, Map<byte[], String> myFiles) {
         this.socket = socket;
+        this.myFiles = myFiles;
     }
 
     public void run() {
@@ -21,10 +23,17 @@ class MessageListener extends Thread {
                 socket.receive(packet);
                 String message = new String(packet.getData(), 0, packet.getLength());
                 System.out.println(packet.getAddress() + ": " + message + '\n');
+                // if(message.startsWith("requestFile")) {
+                //     this.requestedFile(message);
+                // }
             } catch (IOException e) {
             }
         }
         System.out.println("Client finished.");
+    }
+
+    private void requestedFile(String message) {
+        String[] tokens = message.split(";");
     }
 }
 
@@ -145,9 +154,20 @@ public class ClientController {
         this.sendMessage(this.serverAddress, this.serverPort, message);
     }
 
+    private void resquestFileFrom(String line) {
+        String[] tokens = line.split(" ");
+        try {
+            InetSocketAddress address = this.stringToIp(tokens[1]);
+            String message = "requestFile;" + tokens[2];
+            this.sendMessage(InetAddress.getByName(address.getHostName()), address.getPort(), message);
+        } catch (UnknownHostException | URISyntaxException e) {
+            System.out.println("Unable to send message to " + tokens[1]);
+        }
+    }
+
     public void start() {
         
-		Thread messageListener = new MessageListener(this.socket);
+		Thread messageListener = new MessageListener(this.socket, this.myFiles);
 		Thread heartbeatSender = new HeartbeatSender(this.socket, this.serverAddress, this.serverPort);
 
 		messageListener.start();
@@ -165,6 +185,13 @@ public class ClientController {
             else if (line.startsWith("sendto")) this.sendToCommand(line);
             else if (line.startsWith("addfile")) this.registerFileCommand(line);
             else if (line.startsWith("search")) this.searchFileCommand(line);
+            else if (line.startsWith("request")) this.resquestFileFrom(line);
+            else {
+                System.out.println("clients: ver os clientes registrados\n" +
+            "sendto: enviar mensagem\n"+
+            "addfile: registrar arquivo deste cliente no servidor\n"+
+            "search: procurar arquivos com esta substring no servidor\n\n");
+            }
 		}
 
         scanner.close();
