@@ -31,7 +31,7 @@ public class Peer {
     public List<String> searchFiles(String name) {
         List<String> resultFiles = new ArrayList<>();
         for (Map.Entry<byte[], String> file : this.peerFiles.entrySet()) {
-            if (file.getValue().indexOf(name) != -1){
+            if (file.getValue().toLowerCase().indexOf(name.toLowerCase()) != -1){
                 String filename = file.getValue();
                 String filehash = file.getKey().toString();
                 resultFiles.add("File: " + filename + "\n" + "Hash: " + filehash);
