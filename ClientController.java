@@ -77,20 +77,12 @@ class MessageListener extends Thread {
         InetAddress receiverAddress = packet.getAddress();
         Integer receiverPort = packet.getPort();
 
-        try  {
-            ios = new FileInputStream(file);
-            int i = 0;
-
-            do {
-                byte[] buf = new byte[1024];
-                i = ios.read(buf);
-                DatagramPacket contentPacket = new DatagramPacket(buf, buf.length, receiverAddress, receiverPort);
-                this.socket.send(contentPacket);
-            } while (i != -1);
-
-            System.out.println("fim");
-        }finally {
-            if (ios != null) ios.close();
+        Scanner input = new Scanner(file);
+        byte[] sendData = new byte[1024];
+        while(input.hasNextLine()) {
+            sendData = input.nextLine().getBytes();
+            DatagramPacket contentPacket = new DatagramPacket(sendData, sendData.length, receiverAddress, receiverPort);
+            this.socket.send(contentPacket);
         }
     }
 
@@ -128,19 +120,21 @@ class FileReceiver extends Thread {
 
     public void run() {
         try {
-            FileOutputStream fos = new FileOutputStream(new File("files", this.filename));
+            FileWriter fileWriter = new FileWriter("./files/"+this.filename);
+            PrintWriter printWriter = new PrintWriter(fileWriter);
             byte[] receiveData = new byte[1024];
             while (!Thread.currentThread().isInterrupted() && receiveData != null) {
                 try {
                     DatagramPacket packet = new DatagramPacket(receiveData, receiveData.length);
                     socket.setSoTimeout(1000);
                     socket.receive(packet);
-                    fos.write(packet.getData());
+                    String sentence = new String(packet.getData(), packet.getOffset(), packet.getLength());
+                    printWriter.println(sentence);
                 } catch (IOException e) {
                     break;
                 }
             }
-            fos.close();
+            printWriter.close();
             System.out.println("Arquivo recebido! Encerrando transferência.");
         } catch (IOException e1) {
             System.out.println("Erro ao receber arquivo!");
