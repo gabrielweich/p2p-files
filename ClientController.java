@@ -70,7 +70,6 @@ class MessageListener extends Thread {
     }
 
     private void processFileSend(DatagramPacket packet, String message) throws IOException {
-        InputStream ios = null;
         String[] tokens = message.split(";");
         File file = new File(this.myFiles.get(tokens[1]));
         if (!file.exists()) return;
@@ -84,6 +83,7 @@ class MessageListener extends Thread {
             DatagramPacket contentPacket = new DatagramPacket(sendData, sendData.length, receiverAddress, receiverPort);
             this.socket.send(contentPacket);
         }
+        input.close();
     }
 
     private void processFileNotFount(DatagramPacket packet, String message) {

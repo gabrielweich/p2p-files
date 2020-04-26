@@ -1,4 +1,4 @@
-all:				Server.class Client.class ServerThread.class ServerController.class Peer.class ClientController.class
+all:				Server.class Client.class ServerThread.class ServerController.class Peer.class ClientController.class Main.class
 
 Server.class:		Server.java
 				@javac Server.java
@@ -19,6 +19,9 @@ Peer.class:     Peer.java
 
 ClientController.class:     ClientController.java
 				@javac ClientController.java
+
+Main.class:     Main.java
+				@javac Main.java
 
 clean:
 				@rm -rf *.class *~
