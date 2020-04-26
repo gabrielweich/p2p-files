@@ -7,8 +7,6 @@ public class Main {
         else if (args.length == 1 && args[0].equals("Server"))
             new ServerThread("4500").start();
         else {
-            System.out.println(args.length);
-            System.out.println(args[0]);
 			System.out.println("Uso: java Main <Client|Server> (Client)<ServerAddress> (Client)<nickname>");
 		}
     }    
